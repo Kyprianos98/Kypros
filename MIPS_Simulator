@@ -1,0 +1,1158 @@
+#include <iostream>
+#include <istream>
+#include <fstream>
+#include <vector>
+#include <string>
+
+
+using namespace std;
+
+struct Memory_line {
+    int address;
+    int data;
+};
+
+struct IFbuffer{
+    string instruction;
+    string instr;
+    string rs;
+    string rt;
+    string rd;
+    string imm;
+};
+struct IDbuffer{
+    string instruction;
+    int rs;
+    int rt;
+    string imm;
+    string regDestination;
+   // bool validBit;
+};
+struct EXEbuffer{
+    string instruction;
+    int ALUdata;
+    int branchAddress;
+    string branch_addresss;
+    bool branch;
+    int writeToMemData;
+    string regDestination;
+    bool validBit;
+};
+struct MEM_Accessbuffer{
+    string instruction;
+    int dataFromAlu;
+    int dataFromMem;
+    string regDestination;
+    bool validBit;
+};
+
+struct WBbuffer {
+    string regDestination;
+    int data;
+};
+
+///MONITORS
+int n1,n2,n8,n9,n10,n11,n16,n17,n18,n19,n20,n21,n23,n26;
+string s4,s5,s6,s7,s12,s13,s14,s15,s24,s25;
+int registers[31];
+///emine to 22 na do pou enna mpi..
+
+
+/*
+IFbuffer iFetchBuffer;
+IDbuffer iDecodeBuffer;
+EXEbuffer executionBuffer;
+MEM_Accessbuffer memAccessbuffer;
+WBbuffer WBackbuffer;*/
+
+
+
+int add(int rs, int rt){
+    int sum;
+    sum = rs +rt;
+    return sum;
+}
+int sub(int rs, int rt)
+{
+    int sum;
+    sum = rs - rt;
+    return sum;
+}
+int subu(int rs, int rt)
+{
+    int sum;
+    sum = rs - rt;
+    return sum;
+}
+int AND(int rs, int rt)
+{
+    int sum;
+    sum = rs & rt;
+    return sum;
+}
+int OR(int rs, int rt)
+{
+    float sum;
+    sum = rs | rt;
+    return sum;
+}
+int ori(int rs, int immediate){
+    int sum = 0;
+    sum  = rs | immediate;
+    return sum;
+}
+int addi(int rs, int immediate)
+{
+    int sum;
+    sum = rs + immediate;
+    return sum;
+}
+int addiu(int rs, int immediate){
+
+    int sum;
+    sum = rs + immediate;
+    return sum;
+}
+int addu(int rs, int rt){
+    int sum;
+    sum = rs + rt;
+    return sum;
+}
+int andi(int rs, int immediate)
+{
+    int sum;
+    sum = rs && immediate;
+    return sum;
+}
+bool beq(int rs, int rt)
+{
+    return rs == rt;
+}
+bool bne(int rs, int rt){
+    return rs != rt;
+}
+int lw(int rs, int offset){//addres apo tin mnimi
+    int sum;
+    sum = rs + offset;
+    return sum;
+}
+int sw(int rs, int offset){//addresss stin mnimi
+    int sum;
+    sum = rs + offset;
+    return sum;
+}
+int NOR(int rs, int rt)
+{
+    int sum;
+    int result;
+    sum = rs | rt;
+    result = !sum;
+    return result;
+}
+int sll(int rt, int sh_amm){
+    return rt << sh_amm;
+}
+int srl(int rt, int sh_amm){
+    return rt >> sh_amm;
+}
+int slt(int rs, int rt) {
+    if (rs < rt){
+        return 1;
+    }
+    else
+        return 0;
+}
+int sltu(int rs, int rt) {
+    if (rs < rt){
+        return 1;
+    }
+    else
+        return 0;
+}
+int slti(int rs, int immediate) {
+    if (rs < immediate){
+        return 1;
+    }
+    else
+        return 0;
+}
+int sltiu(int rs, int immediate) {
+    if (rs < immediate){
+        return 1;
+    }
+    else
+        return 0;
+}
+int branch_to(string str, vector<string>labels){
+    for (int i = 0; i < labels.size(); ++i) {
+        if (labels[i] == str)
+            return i;
+    }
+}
+
+int opcode(string str) {
+    if (str == "add" || str == "and" || str == "addu" || str == "nor" || str== "or" || str == "slt" || str == "sltu" || str == "sub" || str == "subu")
+        return 0;
+    else if(str == "addi" || str == "addiu" || str == "andi" || str == "ori" || str == "slti" || str == "sltiu" )
+        return 1;
+    else if(str == "sll" || str == "srl")
+        return 2;
+    else if(str == "sw")
+        return 3;
+    else if(str == "lw")
+        return 4;
+    else if(str == "bne" || str == "beq")
+        return 5;
+    else if(str[0] == 'j')
+        return 6;
+    else
+        return -1;
+}
+
+
+int map_reg(string str){
+    if (str == "v0")
+        return 0;
+    else if (str == "v1")
+        return 1;
+    else if (str == "a0")
+        return 2;
+    else if (str == "a1")
+        return 3;
+    else if (str == "a2")
+        return 4;
+    else if (str == "a3")
+        return 5;
+    else if (str == "t0")
+        return 6;
+    else if (str == "t1")
+        return 7;
+    else if (str == "t2")
+        return 8;
+    else if (str == "t3")
+        return 9;
+    else if (str == "t4")
+        return 10;
+    else if (str == "t5")
+        return 11;
+    else if (str == "t6")
+        return 12;
+    else if (str == "t7")
+        return 13;
+    else if (str == "s0")
+        return 14;
+    else if (str == "s1")
+        return 15;
+    else if (str == "s2")
+        return 16;
+    else if (str == "s3")
+        return 17;
+    else if (str == "s4")
+        return 18;
+    else if (str == "s5")
+        return 19;
+    else if (str == "s6")
+        return 20;
+    else if (str == "s7")
+        return 21;
+    else if (str == "t8")
+        return 22;
+    else if (str == "t9")
+        return 23;
+    else if (str == "k0")
+        return 24;
+    else if (str == "k1")
+        return 25;
+    else if (str == "gp")
+        return 26;
+    else if (str == "sp")
+        return 27;
+    else if (str == "fp")
+        return 28;
+    else if (str == "ra")
+        return 29;
+    else if (str == "zero")
+        return 30;
+    else if (str == "r0")
+        return 31;
+    else if (str == "at")
+        return 32;
+    else
+        return (-1);
+}
+/*void printOutputFiletype(){
+    fstream outputF1;
+    outputF1.open("outputfile.txt", ios::in|ios::out|ios::app);
+    outputF1 << "Name: Kyprianos Andreou\nID: 968298\n\n-----Cycle";
+             outputF1 << "\n\n-----Cycle " << dec << cycle << "-----\nRegister:\n" << hex << pc*4 << "\t" << registers[map_reg("r0")] << "\t";
+
+
+}*/
+
+IFbuffer iFetch(string instruction,string instr, string rs, string rt, string rd, string imm,IFbuffer iFetchBuffer){
+    iFetchBuffer.instruction = instruction;
+    iFetchBuffer.instr = instr;
+    iFetchBuffer.rs = rs;
+    iFetchBuffer.rt = rt;
+    iFetchBuffer.rd = rd;
+    iFetchBuffer.imm = imm;
+    return iFetchBuffer;
+
+}
+IDbuffer iDecode(IFbuffer ifetch, IDbuffer iDecodeBuffer){
+    int index1,index2;
+    index1 = map_reg(ifetch.rs);
+    index2 = map_reg(ifetch.rt);
+
+    iDecodeBuffer.instruction = ifetch.instr;
+    iDecodeBuffer.rs = registers[index1];
+    iDecodeBuffer.rt = registers[index2];
+    iDecodeBuffer.imm = ifetch.imm;
+    iDecodeBuffer.regDestination = ifetch.rd;
+    return iDecodeBuffer;
+}
+
+EXEbuffer iExecute(IDbuffer idecode, EXEbuffer executionBuffer, vector<string> labels, int i) {
+    int Aluout, immNum;
+    string s;
+    executionBuffer.instruction = idecode.instruction;
+    executionBuffer.validBit = false;
+    executionBuffer.branch_addresss = "-";
+    executionBuffer.branch = false;
+    executionBuffer.regDestination = idecode.regDestination;
+    executionBuffer.writeToMemData = idecode.rt;
+
+    if (idecode.instruction == "add")
+        Aluout = add(idecode.rs,idecode.rt);
+    else if(idecode.instruction == "addu")
+        Aluout = addu(idecode.rs,idecode.rt);
+    else if(idecode.instruction == "and")
+        Aluout = AND(idecode.rs,idecode.rt);
+    else if(idecode.instruction == "or")
+        Aluout = OR(idecode.rs,idecode.rt);
+    else if(idecode.instruction == "nor")
+        Aluout = NOR(idecode.rs,idecode.rt);
+    else if(idecode.instruction == "slt")
+        Aluout = slt(idecode.rs,idecode.rt);
+    else if(idecode.instruction == "sltu")
+        Aluout = sltu(idecode.rs,idecode.rt);
+    else if(idecode.instruction == "sub")
+        Aluout = sub(idecode.rs,idecode.rt);
+    else if(idecode.instruction == "subu")
+        Aluout = subu(idecode.rs,idecode.rt);
+    else if(idecode.instruction == "addi"){
+        s = idecode.imm;
+        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+        Aluout = addi(idecode.rs,immNum);
+    }
+    else if(idecode.instruction == "addiu") {
+        s = idecode.imm;
+        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+        Aluout = addiu(idecode.rs, immNum);
+    }
+    else if(idecode.instruction == "andi"){
+        s = idecode.imm;
+        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+        Aluout = andi(idecode.rs, immNum);
+    }
+    else if(idecode.instruction == "ori"){
+        s = idecode.imm;
+        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+        Aluout = ori(idecode.rs, immNum);
+    }
+    else if(idecode.instruction == "slti"){
+        s = idecode.imm;
+        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+        Aluout = addiu(idecode.rs, immNum);
+    }
+    else if(idecode.instruction == "sltiu"){
+        s = idecode.imm;
+        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+        Aluout = sltiu(idecode.rs, immNum);
+    }
+    else if(idecode.instruction == "bne") {
+        executionBuffer.branch = bne(idecode.rs,idecode.rt);
+        if (executionBuffer.branch){
+            executionBuffer.branchAddress = branch_to(idecode.imm, labels);//thesi tou label sto vector
+            executionBuffer.branch = true;
+            executionBuffer.validBit = false;
+        }else{
+            executionBuffer.branch = false;
+            executionBuffer.validBit = true;
+            executionBuffer.branchAddress  = branch_to(idecode.imm, labels);//thesi tou label sto vector
+            executionBuffer.branch_addresss = "-";
+        }
+        executionBuffer.writeToMemData = idecode.rt;
+        executionBuffer.regDestination = idecode.regDestination;
+    }
+    else if(idecode.instruction == "beq") {
+        executionBuffer.branch = bne(idecode.rs,idecode.rt);
+        if (executionBuffer.branch){
+            executionBuffer.branchAddress = branch_to(idecode.imm, labels);//thesi tou label sto vector
+            executionBuffer.branch = true;
+            executionBuffer.validBit = false;
+        }else{
+            executionBuffer.branch = false;
+            executionBuffer.validBit = true;
+            executionBuffer.branchAddress  = branch_to(idecode.imm, labels);//thesi tou label sto vector
+            executionBuffer.branch_addresss = "-";
+        }
+        executionBuffer.writeToMemData = idecode.rt;
+        executionBuffer.regDestination = idecode.regDestination;
+    }
+    else if (idecode.instruction == "sll"){
+        s = idecode.imm;
+        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+       Aluout = sll(idecode.rt, immNum);
+    }
+    else if (idecode.instruction == "srl"){
+        s = idecode.imm;
+        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+        Aluout = srl(idecode.rt, immNum);
+    }
+    else if (idecode.instruction == "lw"){
+        s = idecode.imm;
+        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+        Aluout = lw(idecode.rs,immNum);
+        executionBuffer.validBit = true;
+    }
+    else if (idecode.instruction == "sw"){
+        s = idecode.imm;
+        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+        Aluout = sw(idecode.rs,immNum);
+        executionBuffer.validBit = true;
+        executionBuffer.writeToMemData = idecode.rt;
+    }else if (idecode.instruction == "-") {
+        cout<< "label" << endl;
+    }
+    else
+        cout << "this instriction have not been created yet: " << idecode.instruction << endl;
+    executionBuffer.ALUdata = Aluout;
+    return executionBuffer;
+}
+WBbuffer writeBack(MEM_Accessbuffer memAccess, WBbuffer WBackbuffer){
+    WBackbuffer.regDestination = memAccess.regDestination;
+    if (memAccess.instruction == "lw"){
+        WBackbuffer.data = memAccess.dataFromMem;
+    }else{
+        WBackbuffer.data = memAccess.dataFromAlu;
+    }
+    return WBackbuffer;
+}
+void register_file1(vector<string> instr, vector<string>rd, vector<string>rs, vector<string>rt, vector<string>imm, vector<string> labels, int size, int data_size, string *str, int megethos_pinaka) {
+    int i = 0, j = 0, k = 0, cycle = 0, stage = 0;
+    int index1 = 0, index2 = 0, index3 = 0, index4 = 0, store_times = 0;
+
+    string s;
+    bool flag, greenlight;
+    vector<IFbuffer> IF;
+    vector<IDbuffer> ID;
+    vector<EXEbuffer> EXE;
+    vector<MEM_Accessbuffer> MEM;
+    vector<WBbuffer> WB;
+
+    Memory_line dataMemory[data_size];
+
+    IFbuffer instrFetchbuf = IFbuffer(), iftemp;
+    IDbuffer instrDecode = IDbuffer(), idtemp;
+    EXEbuffer instrExecute = EXEbuffer(), exetemp;
+    MEM_Accessbuffer memAccess = MEM_Accessbuffer(), memtemp;
+    WBbuffer wBack = WBbuffer(), wbtemp;
+
+    registers[map_reg("gp")] = 0x10008000;
+    registers[map_reg("sp")] = 0x7ffffffc;
+    registers[map_reg("zero")] = 0;
+
+    ///initialaization if the buffers with "-"
+    wBack.data = 0;
+    wBack.regDestination = "-";
+    memAccess.regDestination = "-";
+    memAccess.instruction = "-";
+    memAccess.validBit = false;
+    memAccess.dataFromMem = 0;
+    memAccess.dataFromAlu = 0;
+    instrExecute.validBit = false;
+    instrExecute.instruction = "-";
+    instrExecute.regDestination = "-";
+    instrExecute.branch_addresss = "-";
+    instrExecute.branch = false;
+    instrExecute.ALUdata = 0;
+    instrExecute.writeToMemData = 0;
+    instrExecute.branchAddress = 0;
+    instrDecode.regDestination = "-";
+    instrDecode.instruction = "-";
+    instrDecode.rt = 0;
+    instrDecode.imm = "-";
+    instrDecode.rs = 0;
+    instrFetchbuf.rs = "-";
+    instrFetchbuf.imm = "-";
+    instrFetchbuf.rt = "-";
+    instrFetchbuf.instruction = "-";
+    instrFetchbuf.instr = "-";
+    instrFetchbuf.rd = "-";
+
+
+    //////////////////////
+    while (i < size) {
+        //fetch
+        iftemp = iFetch(str[i], instr[i], rs[i], rt[i], rd[i], imm[i], instrFetchbuf);
+        IF.push_back(iftemp);
+        i++;
+    }
+
+
+    //////////////
+    ID.push_back(instrDecode);
+
+    i = 1;
+    while (i < size+1) {
+        //decode
+        idtemp = iDecode(IF[i-1], instrDecode);
+        ID.push_back(idtemp);
+        i++;
+    }
+
+    //////////////
+    EXE.push_back(instrExecute);
+    EXE.push_back(instrExecute);
+
+   i = 2;
+    while (i < size+2) {
+        exetemp = iExecute(ID[i-1], instrExecute, labels, i);
+        EXE.push_back(exetemp);
+        i++;
+    }
+
+    /////////////
+    MEM.push_back(memAccess);
+    MEM.push_back(memAccess);
+    MEM.push_back(memAccess);
+
+    i = 3;
+    j=2;
+    while (i < size+3) {
+        if (EXE[j].validBit) {
+            if (EXE[j].instruction == "lw") {
+                for (k = 0; k < data_size; k++) {
+                    if (dataMemory[k].address == EXE[j].ALUdata) {
+                        memtemp.dataFromMem = dataMemory[k].data;
+                        break;
+                    } else
+                        cout << "\n" << "data not found in memory load failed" << endl;
+                }
+            } else if (EXE[j].instruction == "sw") {
+                flag = false;
+                for (k = 0; k < data_size; k++) {
+                    if (dataMemory[k].address == EXE[j].ALUdata) {
+                        flag = true;
+                        break;
+                    }
+                }
+                if (flag) {
+                    dataMemory[k].data = EXE[j].writeToMemData;
+                } else {
+                    dataMemory[store_times].address = EXE[j].ALUdata;
+                    dataMemory[store_times].data = EXE[j].writeToMemData;
+                    store_times++;
+                }
+                memtemp.instruction = EXE[j].instruction;
+                memtemp.dataFromAlu = EXE[j].ALUdata;
+                memtemp.regDestination = EXE[j].regDestination;
+                memtemp.dataFromMem = 0;
+                memtemp.validBit = true;
+            }
+        } else {
+            memtemp.instruction = EXE[j].instruction;
+            memtemp.regDestination = EXE[j].regDestination;
+            memtemp.dataFromAlu = EXE[j].ALUdata;
+            memtemp.dataFromMem = 0;
+            memtemp.validBit = true;
+        }
+        MEM.push_back(memtemp);
+        i++;
+        j++;
+    }
+
+/////////////////////
+
+    i = 0;
+    while (i < size + 4) {
+        wbtemp = writeBack(MEM[i], wBack);
+        if (MEM[i].validBit)
+            registers[map_reg(MEM[i].regDestination)] = MEM[i].dataFromMem;
+        else
+            registers[map_reg(MEM[i].regDestination)] = MEM[i].dataFromAlu;
+        i++;
+    }
+
+    ///tipomata
+
+    i = 0;
+    j=-2;
+    while (i < size) {
+        cout << i << ": " << str[i] << "\t\t" << j << ": " << MEM[i].instruction <<  "\t\t" << "Data from MEM: " << MEM[i].dataFromAlu <<"\t\t" <<  "Data from Alu: "<< MEM[i].dataFromAlu << endl;
+        i++;
+        j++;
+    }
+//////////
+
+}
+
+void spasimo_entolis(string *str1, int *Instruction_type, int size) {
+    int i = 0, j = 0, c = 0, d_size = 0,k;
+    string str;
+    int flag;
+
+    vector<char> instr;
+    vector<char> reg_s;
+    vector<char> reg_t;
+    vector<char> reg_d;
+    vector<char> im;
+    vector<char> label;
+
+    vector<string> instruction;
+    vector<string> register_s;
+    vector<string> register_t;
+    vector<string> register_d;
+    vector<string> immediate;
+    vector<string> Labels;
+
+
+    for(i=0; i<size; i++){
+        str = str1[i];
+        if(Instruction_type[i] == 0){//r-type
+            j=0;
+            while(str[j]){
+                if(str[j] == '$'){
+                    j++;
+                    break;
+                }
+                else {
+                    instr.push_back(str[j]);
+                    j++;
+                }
+
+            }
+            string string1(instr.begin(), instr.end());
+            instr.clear();
+            instruction.push_back(string1);
+
+            while(str[j]){
+                if(str[j] == ','){
+                    j=j+2;
+                    break;
+                }
+                else{
+                    reg_d.push_back(str[j]);
+                    j++;
+                }
+            }
+
+            string string2(reg_d.begin(), reg_d.end());
+            reg_d.clear();
+            register_d.push_back(string2);
+
+            while (str[j]){
+                if(str[j] == ','){
+                    j=j+2;
+                    break;
+                }
+                else{
+                    reg_s.push_back(str[j]);
+                    j++;
+                }
+            }
+
+            string string3(reg_s.begin(), reg_s.end());
+            reg_s.clear();
+            register_s.push_back(string3);
+
+            while(str[j]){
+                if(str[j] == '\n')
+                    break;
+                else{
+                    reg_t.push_back(str[j]);
+                    j++;
+                }
+            }
+
+            string string4(reg_t.begin(), reg_t.end());
+            reg_t.clear();
+            register_t.push_back(string4);
+
+            immediate.push_back("-");
+            Labels.push_back("-");
+        }
+        else if(Instruction_type[i] == 1) {//lw/sw
+            j = 0;
+            while (str[j]) {
+                if (str[j] == '$') {
+                    j++;
+                    break;
+                } else {
+                    instr.push_back(str[j]);
+                    j++;
+                }
+            }
+            string string5(instr.begin(), instr.end());
+            instr.clear();
+            instruction.push_back(string5);
+
+            while (str[j]) {
+                if (str[j] == ',') {
+                    j++;
+                    break;
+                } else {
+                    reg_t.push_back(str[j]);
+                    j++;
+                }
+            }
+            string string60(reg_t.begin(), reg_t.end());
+            register_t.push_back(string60);
+            reg_t.clear();
+
+            while (str[j]) {
+                if (str[j] == '$') {
+                    j++;
+                    break;
+                } else {
+                    im.push_back(str[j]);
+                    j++;
+                }
+            }
+            string string52(im.begin(), im.end());
+            im.clear();
+            immediate.push_back(string52);
+
+            while (str[j]) {
+                if (str[j] == '\n') {
+                    break;
+                } else {
+                    reg_s.push_back(str[j]);
+                    j++;
+                }
+            }
+
+            string string53(reg_s.begin(), reg_s.end());
+            reg_s.clear();
+            register_s.push_back(string53);
+
+            register_d.push_back("-");
+            Labels.push_back("-");
+        }
+        else if(Instruction_type[i] == 2){//I-type
+            j=0;
+            flag = 0;
+            while(str[j]){
+                if(str[j] == '$'){
+                    j++;
+                    break;
+                }
+                else {
+                    instr.push_back(str[j]);
+                    j++;
+                }
+
+
+            }
+            string string6(instr.begin(), instr.end());
+            instr.clear();
+            instruction.push_back(string6);
+
+            if ((string6 == "sll") || (string6 == "srl")){
+                flag = 1;
+            }
+            else if((string6 == "bne") || (string6 == "beq")) {
+                flag = 2;
+            }
+            else
+                flag = 0;
+
+            if(flag == 1){//sll/srl
+                while(str[j]){
+                    if(str[j] == ','){
+                        j=j+2;
+                        break;
+                    }
+                    else{
+                        reg_d.push_back(str[j]);
+                        j++;
+                    }
+                }
+
+                string string75(reg_d.begin(), reg_d.end());
+                reg_d.clear();
+                register_d.push_back(string75);
+
+                while (str[j]){
+                    if(str[j] == ','){
+                        j++;
+                        break;
+                    }
+                    else{
+                        reg_t.push_back(str[j]);
+                        j++;
+                    }
+                }
+
+                string string85(reg_t.begin(), reg_t.end());
+                reg_t.clear();
+                register_t.push_back(string85);
+
+                register_s.push_back("-");
+                Labels.push_back("-");
+
+            }
+            else if(flag == 0) {//addi/addiu/andi/ori/alti/sltiu//beq/bne
+                while (str[j]) {
+                    if (str[j] == ',') {
+                        j = j + 2;
+                        break;
+                    } else {
+                        reg_t.push_back(str[j]);
+                        j++;
+                    }
+                }
+
+                string string7(reg_t.begin(), reg_t.end());
+                reg_t.clear();
+                register_t.push_back(string7);
+
+                while (str[j]) {
+                    if (str[j] == ',') {
+                        j++;
+                        break;
+                    } else {
+                        reg_s.push_back(str[j]);
+                        j++;
+                    }
+                }
+
+                string string8(reg_s.begin(), reg_s.end());
+                reg_s.clear();
+                register_s.push_back(string8);
+
+                register_d.push_back("-");
+                Labels.push_back("-");
+
+            }
+            else if(flag == 2){//bne/beq
+                while (str[j]) {
+                    if (str[j] == ',') {
+                        j = j + 2;
+                        break;
+                    } else {
+                        reg_s.push_back(str[j]);
+                        j++;
+                    }
+                }
+
+                string string95(reg_s.begin(), reg_s.end());
+                reg_s.clear();
+                register_s.push_back(string95);
+
+                while (str[j]) {
+                    if (str[j] == ',') {
+                        j++;
+                        break;
+                    } else {
+                        reg_t.push_back(str[j]);
+                        j++;
+                    }
+                }
+
+                string string96(reg_t.begin(), reg_t.end());
+                reg_t.clear();
+                register_t.push_back(string96);
+
+                register_d.push_back("-");
+                Labels.push_back("-");
+
+            }
+
+            while (str[j]) {
+                if (str[j] == '\n') {
+                    break;
+                } else {
+                    im.push_back(str[j]);
+                    j++;
+                }
+            }
+            string string9(im.begin(), im.end());
+            im.clear();
+            immediate.push_back(string9);
+        }
+        else if(Instruction_type[i] == 3){//jump
+            j=0;
+
+            while (str[j]) {
+                if (str[j] == '\n') {
+                    break;
+                } else {
+                    instr.push_back(str[j]);
+                    j++;
+                }
+            }
+
+            string string10(instr.begin(), instr.end());
+            instr.clear();
+            instruction.push_back(string10);
+
+            immediate.push_back("-");
+            Labels.push_back("-");
+            register_t.push_back("-");
+            register_s.push_back("-");
+            register_d.push_back("-");
+        }
+        else if(Instruction_type[i] == 4){//Labels
+            j=0;
+            while (str[j]) {
+                if (str[j] == ':') {
+                    break;
+                } else {
+                    label.push_back(str[j]);
+                    j++;
+                }
+            }
+            string string11(label.begin(), label.end());
+            label.clear();
+            Labels.push_back(string11);
+
+            immediate.push_back("-");
+            instruction.push_back("-");
+            register_t.push_back("-");
+            register_s.push_back("-");
+            register_d.push_back("-");
+        }
+        else if(Instruction_type[i] == -2){//error
+            cout << "ERROR" << endl;
+        }
+
+    }
+
+    instruction.push_back("\0");
+
+    while (instruction[c] != "\0"){
+        if (instruction[c] == "sw")
+            d_size++;
+        c++;
+    }
+    register_file1(instruction, register_d, register_s, register_t, immediate, Labels, size, d_size, str1, size);
+
+}
+int tipos(string str) {
+
+    int type = -1;
+    int i = 0;
+    int m = 0;
+    int l = 0;
+    int c = 0;
+
+
+    while (str[i]) {
+
+        if (str[i] == '$') {
+            m++;
+            i++;
+        } else if (str[i] == ',') {
+            l++;
+            i++;
+        }
+        else if(str[i] == ':'){
+            c++;
+            i++;
+        }
+        else
+            i++;
+    }
+
+    if ((m == 3) && (l == 2)) {
+        type = 0;//R-type
+    } else if ((m == 2) && (l == 2)) {
+        type = 2;//shift branch addi andi ori
+    } else if ((m == 2) && (l == 1)) {
+        type = 1;//lw sw
+    } else if ((m == 0) && (l == 0) && (c == 0)) {
+        type = 3;//jump
+    }
+    else if(c == 1){
+        type = 4;
+    }
+    else type = -2;
+
+    return type;
+}
+void instruction_mem1(int size) {
+    int i = 0, j = 0, c = 0, p = 0;
+    string str1[size];
+    int typos_entolis[size];
+
+    ifstream file("temp1.txt");
+    if (file.is_open()) {
+
+        for (i = 0; i < size; ++i) {
+            file >> str1[i];
+            p++;
+        }
+    }
+    for (j = 0; j < size; ++j) {
+        c = tipos(str1[j]);
+        typos_entolis[j] = c;
+    }
+
+    spasimo_entolis(str1, typos_entolis,p);
+}
+char *remove_parenthesis1(char *str) {
+    char ch = 40;
+    int i = 0, j = 0;
+    while (str[i]) {
+        if (str[i] != ch)
+            str[j++] = str[i];
+        i++;
+    }
+    str[j] = '\0';
+    return str;
+}
+char *remove_parenthesis2(char *str) {
+    char ch = 41;
+    int i = 0, j = 0;
+    while (str[i]) {
+        if (str[i] != ch)
+            str[j++] = str[i];
+        i++;
+    }
+    str[j] = '\0';
+    return str;
+}
+char *remove_enters(char *str) {
+    int i = 0;
+    int j = 0;
+    int c = 0;
+    char ch = '\n';
+    while (str[i]) {
+        if (str[i] == str[i + 1]) {
+            if (str[i] == ch) {
+                j = i;
+                while (str[j]) {
+                    str[j] = str[j + 1];
+                    j++;
+                }
+                i--;
+            }
+        }
+        i++;
+    }
+    return str;
+}
+char *removeTabs(char *str) {
+    char ch = 9;
+    int i = 0, j = 0;
+    while (str[i]) {
+        if (str[i] != ch)
+            str[j++] = str[i];
+        i++;
+    }
+    str[j] = '\0';
+    return str;
+}
+char *r(char *str) {
+    char ch = '\r';
+    int i = 0, j = 0;
+    while (str[i]) {
+        if (str[i] != ch)
+            str[j++] = str[i];
+        i++;
+    }
+    str[j] = '\0';
+    return str;
+}
+char *removeSpaces(char *str) {
+    char ch = 32;
+    int i = 0, j = 0;
+    while (str[i]) {
+        if (str[i] != ch)
+            str[j++] = str[i];
+        i++;
+    }
+    str[j] = '\0';
+    return str;
+}
+int storeInstructions(int size) {
+    char *array = new char[size];
+    char ch;
+    string sxolia;
+    int c = 0;
+
+    int i = 0, j = 0;
+    ifstream myfile("simple.txt");
+
+    if (myfile.is_open()) {
+        while (!myfile.eof()) {
+            if (ch == ':')
+                break;
+            else
+                myfile.get(ch);
+        }
+        while (!myfile.eof()) {
+            if (ch == '#') {
+                c--;
+                getline(myfile, sxolia);
+                array[c] = '\n';
+                c++;
+            }
+            myfile.get(ch);
+            array[c] = ch;
+            c++;
+
+        }
+        myfile.close();
+    } else {
+        cout << "ERROR opening file" << endl;
+    }
+    removeSpaces(array);
+    removeTabs(array);
+    remove_enters(array);
+    remove_parenthesis1(array);
+    remove_parenthesis2(array);
+    r(array);
+
+    ofstream firs_temp;
+    firs_temp.open("temp1.txt");
+    while (array[i] != '\0') {
+        firs_temp << array[i];
+        i++;
+        if (array[i] == '\n')
+            j++;
+    }
+    firs_temp.close();
+    return j;
+}
+int size_of_file_char() {
+    string sxolia;
+    char ch;
+    int i = 0;
+
+    ifstream myfile("simple.txt");
+
+    if (myfile.is_open()) {
+        while (!myfile.eof()) {
+            myfile.get(ch);
+            i++;
+        }
+        myfile.close();
+    } else {
+        cout << "ERROR opening file" << endl;
+    }
+    return i;
+}
+int main() {
+    // char i = '0' + 7;
+    //cout << i;
+    int size_by_char = 0;
+    int size_of_instr = 0;
+    size_by_char = size_of_file_char();
+    size_of_instr = storeInstructions(size_by_char);
+    instruction_mem1(size_of_instr);
+
+    return 0;
+}
