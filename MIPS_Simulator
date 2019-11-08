@@ -25,29 +25,27 @@ struct IDbuffer{
     int rs;
     int rt;
     string imm;
-    string regDestination;
-   // bool validBit;
+    int regDestination;
+    bool validBit;
 };
 struct EXEbuffer{
     string instruction;
     int ALUdata;
-    int branchAddress;
-    string branch_addresss;
-    bool branch;
     int writeToMemData;
-    string regDestination;
+    int regDestination;
     bool validBit;
 };
 struct MEM_Accessbuffer{
     string instruction;
     int dataFromAlu;
     int dataFromMem;
-    string regDestination;
-    bool validBit;
+    int regDestination;
+    bool AorM;//get data from Alu or memory
+    bool validBit;//if branch is taken there gonna be flush if valitbit=false then i print "-"
 };
 
 struct WBbuffer {
-    string regDestination;
+    int regDestination;
     int data;
 };
 
@@ -208,8 +206,6 @@ int opcode(string str) {
     else
         return -1;
 }
-
-
 int map_reg(string str){
     if (str == "v0")
         return 0;
@@ -280,14 +276,23 @@ int map_reg(string str){
     else
         return (-1);
 }
-/*void printOutputFiletype(){
-    fstream outputF1;
+void printOutputFiletype(int tipoma){
+    if(tipoma==0){
+        ///tipose ta stixia mou
+    }else if(tipoma==1){
+        ///tipose ta stixeia gia ton zitoumeno kiklo
+    }else if(tipoma==2){
+        ///TIPOSE TO TELIKO FILE
+    }
+    cout<<"tipothike sto outputfile :)"<<endl;
+   /* fstream outputF1;
     outputF1.open("outputfile.txt", ios::in|ios::out|ios::app);
     outputF1 << "Name: Kyprianos Andreou\nID: 968298\n\n-----Cycle";
-             outputF1 << "\n\n-----Cycle " << dec << cycle << "-----\nRegister:\n" << hex << pc*4 << "\t" << registers[map_reg("r0")] << "\t";
-
-
-}*/
+             outputF1 << "\n\n-----Cycle " << dec << cycle << "-----\nRegister:\n" << hex << pc*4 << "\t" << registers[map_reg("r0")] << "\t";*/
+}
+bool comparator(int rs, int rt){
+    return bne(rs,rt) || beq(rs, rt);
+}
 
 IFbuffer iFetch(string instruction,string instr, string rs, string rt, string rd, string imm,IFbuffer iFetchBuffer){
     iFetchBuffer.instruction = instruction;
@@ -299,305 +304,283 @@ IFbuffer iFetch(string instruction,string instr, string rs, string rt, string rd
     return iFetchBuffer;
 
 }
-IDbuffer iDecode(IFbuffer ifetch, IDbuffer iDecodeBuffer){
-    int index1,index2;
+IDbuffer iDecode(IFbuffer ifetch, IDbuffer iDecodeBuffer) {
+    int index1, index2;
+
     index1 = map_reg(ifetch.rs);
     index2 = map_reg(ifetch.rt);
 
     iDecodeBuffer.instruction = ifetch.instr;
-    iDecodeBuffer.rs = registers[index1];
-    iDecodeBuffer.rt = registers[index2];
+    iDecodeBuffer.rs = index1;
+    iDecodeBuffer.rt = index2;
     iDecodeBuffer.imm = ifetch.imm;
-    iDecodeBuffer.regDestination = ifetch.rd;
+    iDecodeBuffer.regDestination = map_reg(ifetch.rd);
+
+    if ((iDecodeBuffer.instruction == "bne" || iDecodeBuffer.instruction == "beq") && comparator(index1, index2)){//an isxoun afta kane flush diladi adiase to pipeline
+        cout << "to programma vrike oti to branch tha ekstelesti" << endl;
+        iDecodeBuffer.validBit = false;
+    } else
+        iDecodeBuffer.validBit = true;
+
     return iDecodeBuffer;
 }
-
-EXEbuffer iExecute(IDbuffer idecode, EXEbuffer executionBuffer, vector<string> labels, int i) {
-    int Aluout, immNum;
+EXEbuffer iExecute(IDbuffer idecode, EXEbuffer executionBuffer) {
+    int Aluout = 0, immNum = 0;
     string s;
-    executionBuffer.instruction = idecode.instruction;
-    executionBuffer.validBit = false;
-    executionBuffer.branch_addresss = "-";
-    executionBuffer.branch = false;
-    executionBuffer.regDestination = idecode.regDestination;
-    executionBuffer.writeToMemData = idecode.rt;
 
-    if (idecode.instruction == "add")
-        Aluout = add(idecode.rs,idecode.rt);
-    else if(idecode.instruction == "addu")
-        Aluout = addu(idecode.rs,idecode.rt);
-    else if(idecode.instruction == "and")
-        Aluout = AND(idecode.rs,idecode.rt);
-    else if(idecode.instruction == "or")
-        Aluout = OR(idecode.rs,idecode.rt);
-    else if(idecode.instruction == "nor")
-        Aluout = NOR(idecode.rs,idecode.rt);
-    else if(idecode.instruction == "slt")
-        Aluout = slt(idecode.rs,idecode.rt);
-    else if(idecode.instruction == "sltu")
-        Aluout = sltu(idecode.rs,idecode.rt);
-    else if(idecode.instruction == "sub")
-        Aluout = sub(idecode.rs,idecode.rt);
-    else if(idecode.instruction == "subu")
-        Aluout = subu(idecode.rs,idecode.rt);
-    else if(idecode.instruction == "addi"){
-        s = idecode.imm;
-        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
-        Aluout = addi(idecode.rs,immNum);
-    }
-    else if(idecode.instruction == "addiu") {
-        s = idecode.imm;
-        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
-        Aluout = addiu(idecode.rs, immNum);
-    }
-    else if(idecode.instruction == "andi"){
-        s = idecode.imm;
-        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
-        Aluout = andi(idecode.rs, immNum);
-    }
-    else if(idecode.instruction == "ori"){
-        s = idecode.imm;
-        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
-        Aluout = ori(idecode.rs, immNum);
-    }
-    else if(idecode.instruction == "slti"){
-        s = idecode.imm;
-        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
-        Aluout = addiu(idecode.rs, immNum);
-    }
-    else if(idecode.instruction == "sltiu"){
-        s = idecode.imm;
-        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
-        Aluout = sltiu(idecode.rs, immNum);
-    }
-    else if(idecode.instruction == "bne") {
-        executionBuffer.branch = bne(idecode.rs,idecode.rt);
-        if (executionBuffer.branch){
-            executionBuffer.branchAddress = branch_to(idecode.imm, labels);//thesi tou label sto vector
-            executionBuffer.branch = true;
-            executionBuffer.validBit = false;
-        }else{
-            executionBuffer.branch = false;
+    executionBuffer.instruction = idecode.instruction;
+    executionBuffer.regDestination = idecode.regDestination;
+    executionBuffer.writeToMemData = 0;
+    executionBuffer.validBit = true;
+
+    if(idecode.validBit) {
+        if (idecode.instruction == "add")
+            Aluout = add(registers[idecode.rs], registers[idecode.rt]);
+        else if (idecode.instruction == "addu")
+            Aluout = addu(registers[idecode.rs], registers[idecode.rt]);
+        else if (idecode.instruction == "and")
+            Aluout = AND(registers[idecode.rs], registers[idecode.rt]);
+        else if (idecode.instruction == "or")
+            Aluout = OR(registers[idecode.rs], registers[idecode.rt]);
+        else if (idecode.instruction == "nor")
+            Aluout = NOR(registers[idecode.rs], registers[idecode.rt]);
+        else if (idecode.instruction == "slt")
+            Aluout = slt(registers[idecode.rs], registers[idecode.rt]);
+        else if (idecode.instruction == "sltu")
+            Aluout = sltu(registers[idecode.rs], registers[idecode.rt]);
+        else if (idecode.instruction == "sub")
+            Aluout = sub(registers[idecode.rs], registers[idecode.rt]);
+        else if (idecode.instruction == "subu")
+            Aluout = subu(registers[idecode.rs], registers[idecode.rt]);
+        else if (idecode.instruction == "addi") {
+            executionBuffer.regDestination = idecode.rt;
+            s = idecode.imm;
+            immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+            Aluout = addi(registers[idecode.rs], immNum);
+        } else if (idecode.instruction == "addiu") {
+            executionBuffer.regDestination = idecode.rt;
+            s = idecode.imm;
+            immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+            Aluout = addiu(registers[idecode.rs], immNum);
+        } else if (idecode.instruction == "andi") {
+            executionBuffer.regDestination = idecode.rt;
+            s = idecode.imm;
+            immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+            Aluout = andi(registers[idecode.rs], immNum);
+        } else if (idecode.instruction == "ori") {
+            executionBuffer.regDestination = idecode.rt;
+            s = idecode.imm;
+            immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+            Aluout = ori(registers[idecode.rs], immNum);
+        } else if (idecode.instruction == "slti") {
+            executionBuffer.regDestination = idecode.rt;
+            s = idecode.imm;
+            immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+            Aluout = addiu(registers[idecode.rs], immNum);
+        } else if (idecode.instruction == "sltiu") {
+            executionBuffer.regDestination = idecode.rt;
+            s = idecode.imm;
+            immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+            Aluout = sltiu(registers[idecode.rs], immNum);
+        } else if (idecode.instruction == "sll") {
+            s = idecode.imm;
+            immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+            Aluout = sll(registers[idecode.rt], immNum);
+        } else if (idecode.instruction == "srl") {
+            s = idecode.imm;
+            immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+            Aluout = srl(registers[idecode.rt], immNum);
+        } else if (idecode.instruction == "lw") {
+            executionBuffer.regDestination = idecode.rt;
+            s = idecode.imm;
+            immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
+            Aluout = lw(registers[idecode.rs], immNum);
             executionBuffer.validBit = true;
-            executionBuffer.branchAddress  = branch_to(idecode.imm, labels);//thesi tou label sto vector
-            executionBuffer.branch_addresss = "-";
-        }
-        executionBuffer.writeToMemData = idecode.rt;
-        executionBuffer.regDestination = idecode.regDestination;
+        } else if (idecode.instruction == "sw") {
+            s = idecode.imm;
+            immNum = stoi(s, nullptr, 0);//o integer arithmos gia to offset
+            Aluout = sw(registers[idecode.rs], immNum);
+            executionBuffer.writeToMemData = idecode.rt;
+        } else if (idecode.instruction == "-")
+            cout << "label" << endl;
+        else
+            cout << "this instruction have not been created yet: " << idecode.instruction << endl;
+        executionBuffer.ALUdata = Aluout;
+    }else{
+        executionBuffer.instruction = "-";
+        executionBuffer.validBit = false;
+        executionBuffer.writeToMemData = 0;
+        executionBuffer.ALUdata = 0;
+        executionBuffer.regDestination = -1;
     }
-    else if(idecode.instruction == "beq") {
-        executionBuffer.branch = bne(idecode.rs,idecode.rt);
-        if (executionBuffer.branch){
-            executionBuffer.branchAddress = branch_to(idecode.imm, labels);//thesi tou label sto vector
-            executionBuffer.branch = true;
-            executionBuffer.validBit = false;
-        }else{
-            executionBuffer.branch = false;
-            executionBuffer.validBit = true;
-            executionBuffer.branchAddress  = branch_to(idecode.imm, labels);//thesi tou label sto vector
-            executionBuffer.branch_addresss = "-";
-        }
-        executionBuffer.writeToMemData = idecode.rt;
-        executionBuffer.regDestination = idecode.regDestination;
-    }
-    else if (idecode.instruction == "sll"){
-        s = idecode.imm;
-        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
-       Aluout = sll(idecode.rt, immNum);
-    }
-    else if (idecode.instruction == "srl"){
-        s = idecode.imm;
-        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
-        Aluout = srl(idecode.rt, immNum);
-    }
-    else if (idecode.instruction == "lw"){
-        s = idecode.imm;
-        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
-        Aluout = lw(idecode.rs,immNum);
-        executionBuffer.validBit = true;
-    }
-    else if (idecode.instruction == "sw"){
-        s = idecode.imm;
-        immNum = stoi(s, nullptr, 0); //o integer arithmos gia to offset
-        Aluout = sw(idecode.rs,immNum);
-        executionBuffer.validBit = true;
-        executionBuffer.writeToMemData = idecode.rt;
-    }else if (idecode.instruction == "-") {
-        cout<< "label" << endl;
-    }
-    else
-        cout << "this instriction have not been created yet: " << idecode.instruction << endl;
-    executionBuffer.ALUdata = Aluout;
     return executionBuffer;
 }
-WBbuffer writeBack(MEM_Accessbuffer memAccess, WBbuffer WBackbuffer){
-    WBackbuffer.regDestination = memAccess.regDestination;
-    if (memAccess.instruction == "lw"){
-        WBackbuffer.data = memAccess.dataFromMem;
-    }else{
-        WBackbuffer.data = memAccess.dataFromAlu;
-    }
-    return WBackbuffer;
-}
-void register_file1(vector<string> instr, vector<string>rd, vector<string>rs, vector<string>rt, vector<string>imm, vector<string> labels, int size, int data_size, string *str, int megethos_pinaka) {
-    int i = 0, j = 0, k = 0, cycle = 0, stage = 0;
-    int index1 = 0, index2 = 0, index3 = 0, index4 = 0, store_times = 0;
-
-    string s;
-    bool flag, greenlight;
+void Pipeline(string * str, int size, int size_of_mem, vector<string> instr, vector<string>rd, vector<string>rs, vector<string>rt, vector<string>imm, vector<string> labels) {
+    int i, j, k, cycle, stage, size_of_vectors, store_times = 0;
     vector<IFbuffer> IF;
     vector<IDbuffer> ID;
     vector<EXEbuffer> EXE;
     vector<MEM_Accessbuffer> MEM;
     vector<WBbuffer> WB;
+    Memory_line dataMemory[size_of_mem];
 
-    Memory_line dataMemory[data_size];
-
-    IFbuffer instrFetchbuf = IFbuffer(), iftemp;
-    IDbuffer instrDecode = IDbuffer(), idtemp;
-    EXEbuffer instrExecute = EXEbuffer(), exetemp;
-    MEM_Accessbuffer memAccess = MEM_Accessbuffer(), memtemp;
-    WBbuffer wBack = WBbuffer(), wbtemp;
+    bool flag;
 
     registers[map_reg("gp")] = 0x10008000;
     registers[map_reg("sp")] = 0x7ffffffc;
     registers[map_reg("zero")] = 0;
+    registers[map_reg("r0")] = 0;
+    registers[map_reg("at")] = 0;
 
-    ///initialaization if the buffers with "-"
-    wBack.data = 0;
-    wBack.regDestination = "-";
-    memAccess.regDestination = "-";
-    memAccess.instruction = "-";
-    memAccess.validBit = false;
-    memAccess.dataFromMem = 0;
-    memAccess.dataFromAlu = 0;
-    instrExecute.validBit = false;
-    instrExecute.instruction = "-";
-    instrExecute.regDestination = "-";
-    instrExecute.branch_addresss = "-";
-    instrExecute.branch = false;
-    instrExecute.ALUdata = 0;
-    instrExecute.writeToMemData = 0;
-    instrExecute.branchAddress = 0;
-    instrDecode.regDestination = "-";
-    instrDecode.instruction = "-";
-    instrDecode.rt = 0;
-    instrDecode.imm = "-";
-    instrDecode.rs = 0;
-    instrFetchbuf.rs = "-";
-    instrFetchbuf.imm = "-";
-    instrFetchbuf.rt = "-";
-    instrFetchbuf.instruction = "-";
-    instrFetchbuf.instr = "-";
-    instrFetchbuf.rd = "-";
+    IFbuffer instrFetchBuf, iftemp;
+    IDbuffer instrDecodeBuf, idtemp;
+    EXEbuffer instrExecuteBuf, exetemp;
+    size_of_vectors = size - 1;
 
+    instrFetchBuf.rs = "-";
+    instrFetchBuf.imm = "-";
+    instrFetchBuf.rt = "-";
+    instrFetchBuf.instruction = "-";
+    instrFetchBuf.instr = "-";
+    instrFetchBuf.rd = "-";
 
-    //////////////////////
-    while (i < size) {
-        //fetch
-        iftemp = iFetch(str[i], instr[i], rs[i], rt[i], rd[i], imm[i], instrFetchbuf);
+    i = 0;
+    while (i < size_of_vectors) {
+        iftemp = iFetch(str[i], instr[i], rs[i], rt[i], rd[i], imm[i], instrFetchBuf);
         IF.push_back(iftemp);
         i++;
     }
 
-
-    //////////////
-    ID.push_back(instrDecode);
-
+    ///instruction decode
+    //initialization
+    instrDecodeBuf.regDestination = 0;
+    instrDecodeBuf.instruction = "-";
+    instrDecodeBuf.rt = 0;
+    instrDecodeBuf.imm = "-";
+    instrDecodeBuf.rs = 0;
+    instrDecodeBuf.validBit = false;
+    //kano push mia keni grammi sto vector ID
+    ID.push_back(instrDecodeBuf);
     i = 1;
-    while (i < size+1) {
-        //decode
-        idtemp = iDecode(IF[i-1], instrDecode);
+    while (i < size_of_vectors + 1) {
+        //decode tin entoli kai kano push sto vector ID
+        idtemp = iDecode(IF[i - 1], instrDecodeBuf);
         ID.push_back(idtemp);
         i++;
     }
+    ID.push_back(instrDecodeBuf);
+    ID.push_back(instrDecodeBuf);
+    ID.push_back(instrDecodeBuf);
 
-    //////////////
-    EXE.push_back(instrExecute);
-    EXE.push_back(instrExecute);
-
-   i = 2;
-    while (i < size+2) {
-        exetemp = iExecute(ID[i-1], instrExecute, labels, i);
-        EXE.push_back(exetemp);
+///tipomata gia debuging
+    i = 0;
+    while (i < size_of_vectors) {
+        cout << i << ":\ninstruction:" << IF[i].instruction << "\t\t\t" << ID[i + 1].instruction << endl;
+        cout << "rs:" << IF[i].rs << "\t\t\t" << ID[i + 1].rs << endl;
+        cout << "rt:" << IF[i].rt << "\t\t\t" << ID[i + 1].rt << endl;
+        cout << "rd:" << IF[i].rd << "\t\t\t" << ID[i + 1].regDestination << endl;
+        cout << "imm:" << IF[i].imm << "\t\t\t" << ID[i + 1].imm << "\n\n\n" << endl;
         i++;
     }
+///telos tipomaton gia debuging
 
-    /////////////
-    MEM.push_back(memAccess);
-    MEM.push_back(memAccess);
-    MEM.push_back(memAccess);
+        instrExecuteBuf.instruction = "-";
+        instrExecuteBuf.ALUdata = 0;
+        instrExecuteBuf.writeToMemData = 0;
+        instrExecuteBuf.regDestination = '-';
+        instrExecuteBuf.validBit = false;
 
-    i = 3;
-    j=2;
-    while (i < size+3) {
-        if (EXE[j].validBit) {
-            if (EXE[j].instruction == "lw") {
-                for (k = 0; k < data_size; k++) {
-                    if (dataMemory[k].address == EXE[j].ALUdata) {
-                        memtemp.dataFromMem = dataMemory[k].data;
-                        break;
-                    } else
-                        cout << "\n" << "data not found in memory load failed" << endl;
-                }
-            } else if (EXE[j].instruction == "sw") {
-                flag = false;
-                for (k = 0; k < data_size; k++) {
-                    if (dataMemory[k].address == EXE[j].ALUdata) {
-                        flag = true;
-                        break;
+        //kano push 2 executebuffers
+        EXE.push_back(instrExecuteBuf);
+        EXE.push_back(instrExecuteBuf);
+        i = 2;
+        while (i < size_of_vectors + 2) {
+            exetemp = iExecute(ID[i - 1], instrExecuteBuf);
+            if(exetemp.validBit) {
+                if (exetemp.instruction == "lw" || exetemp.instruction == "sw") {
+                    if (exetemp.instruction == "lw") {
+                        for (j = 0; j < size_of_mem; j++) {
+                            if (dataMemory[j].address == exetemp.ALUdata) {
+                                registers[exetemp.regDestination] = dataMemory[j].data;
+                                break;
+                            } else
+                                cout << "\n" << "data not found in memory load failed" << endl;
+                        }
+                    } else if (exetemp.instruction == "sw") {
+                        flag = false;
+                        for (j = 0; j < size_of_mem; j++) {
+                            if (dataMemory[j].address == exetemp.ALUdata) {
+                                flag = true;
+                                break;
+                            }
+                        }
+                        if (flag) {
+                            dataMemory[j].data = registers[exetemp.writeToMemData];
+                        } else {
+                            dataMemory[store_times].address = exetemp.ALUdata;
+                            dataMemory[store_times].data = registers[exetemp.writeToMemData];
+                            store_times++;
+                        }
                     }
-                }
-                if (flag) {
-                    dataMemory[k].data = EXE[j].writeToMemData;
                 } else {
-                    dataMemory[store_times].address = EXE[j].ALUdata;
-                    dataMemory[store_times].data = EXE[j].writeToMemData;
-                    store_times++;
+                    registers[exetemp.regDestination] = exetemp.ALUdata;
                 }
-                memtemp.instruction = EXE[j].instruction;
-                memtemp.dataFromAlu = EXE[j].ALUdata;
-                memtemp.regDestination = EXE[j].regDestination;
-                memtemp.dataFromMem = 0;
-                memtemp.validBit = true;
+            }else{
+
             }
-        } else {
-            memtemp.instruction = EXE[j].instruction;
-            memtemp.regDestination = EXE[j].regDestination;
-            memtemp.dataFromAlu = EXE[j].ALUdata;
-            memtemp.dataFromMem = 0;
-            memtemp.validBit = true;
+            i++;
         }
-        MEM.push_back(memtemp);
-        i++;
-        j++;
+
+        ///checking memory
+        i = 0;
+        while (i < store_times) {
+            cout << dataMemory[i].address << "\t" << dataMemory[i].data << endl;
+            i++;
+        }
+        ///
     }
+int tipos(string str) {
 
-/////////////////////
+    int type = -1;
+    int i = 0;
+    int m = 0;
+    int l = 0;
+    int c = 0;
 
-    i = 0;
-    while (i < size + 4) {
-        wbtemp = writeBack(MEM[i], wBack);
-        if (MEM[i].validBit)
-            registers[map_reg(MEM[i].regDestination)] = MEM[i].dataFromMem;
+
+    while (str[i]) {
+
+        if (str[i] == '$') {
+            m++;
+            i++;
+        } else if (str[i] == ',') {
+            l++;
+            i++;
+        }
+        else if(str[i] == ':'){
+            c++;
+            i++;
+        }
         else
-            registers[map_reg(MEM[i].regDestination)] = MEM[i].dataFromAlu;
-        i++;
+            i++;
     }
 
-    ///tipomata
-
-    i = 0;
-    j=-2;
-    while (i < size) {
-        cout << i << ": " << str[i] << "\t\t" << j << ": " << MEM[i].instruction <<  "\t\t" << "Data from MEM: " << MEM[i].dataFromAlu <<"\t\t" <<  "Data from Alu: "<< MEM[i].dataFromAlu << endl;
-        i++;
-        j++;
+    if ((m == 3) && (l == 2)) {
+        type = 0;//R-type
+    } else if ((m == 2) && (l == 2)) {
+        type = 2;//shift branch addi andi ori
+    } else if ((m == 2) && (l == 1)) {
+        type = 1;//lw sw
+    } else if ((m == 0) && (l == 0) && (c == 0)) {
+        type = 3;//jump
     }
-//////////
+    else if(c == 1){
+        type = 4;
+    }
+    else type = -2;
 
+    return type;
 }
-
 void spasimo_entolis(string *str1, int *Instruction_type, int size) {
     int i = 0, j = 0, c = 0, d_size = 0,k;
     string str;
@@ -937,51 +920,10 @@ void spasimo_entolis(string *str1, int *Instruction_type, int size) {
             d_size++;
         c++;
     }
-    register_file1(instruction, register_d, register_s, register_t, immediate, Labels, size, d_size, str1, size);
+    Pipeline(str1, size, d_size, instruction, register_d, register_s, register_t, immediate, Labels);
 
 }
-int tipos(string str) {
 
-    int type = -1;
-    int i = 0;
-    int m = 0;
-    int l = 0;
-    int c = 0;
-
-
-    while (str[i]) {
-
-        if (str[i] == '$') {
-            m++;
-            i++;
-        } else if (str[i] == ',') {
-            l++;
-            i++;
-        }
-        else if(str[i] == ':'){
-            c++;
-            i++;
-        }
-        else
-            i++;
-    }
-
-    if ((m == 3) && (l == 2)) {
-        type = 0;//R-type
-    } else if ((m == 2) && (l == 2)) {
-        type = 2;//shift branch addi andi ori
-    } else if ((m == 2) && (l == 1)) {
-        type = 1;//lw sw
-    } else if ((m == 0) && (l == 0) && (c == 0)) {
-        type = 3;//jump
-    }
-    else if(c == 1){
-        type = 4;
-    }
-    else type = -2;
-
-    return type;
-}
 void instruction_mem1(int size) {
     int i = 0, j = 0, c = 0, p = 0;
     string str1[size];
@@ -1146,13 +1088,10 @@ int size_of_file_char() {
     return i;
 }
 int main() {
-    // char i = '0' + 7;
-    //cout << i;
     int size_by_char = 0;
     int size_of_instr = 0;
     size_by_char = size_of_file_char();
     size_of_instr = storeInstructions(size_by_char);
     instruction_mem1(size_of_instr);
-
     return 0;
 }
